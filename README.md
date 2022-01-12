@@ -1,6 +1,6 @@
 # prize-projection
 
-run with node prizeProjection.js
+execute `node prizeProjection.js`
 
 change any of the default parameters for simulation
 
