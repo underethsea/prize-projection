@@ -1,5 +1,7 @@
 # prize-projection
 
+`yarn install`
+
 execute `node prizeProjection.js`
 
 change any of the default parameters for simulation
@@ -10,11 +12,11 @@ const depositAmount = 100000;
 
 const tvl = 30000000;
 
-const totalPrizes = 4096;
-
 const simulationDays = 7;
 
 const simulationRuns = 500;
+
+const maxPrizes = 2;
 
 const gasToClaim = 0.04;
 
