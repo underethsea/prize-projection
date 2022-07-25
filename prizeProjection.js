@@ -5,25 +5,28 @@
 // const chalk = require('chalk')
 
 // =========== CHANGE THESE CONSTANTS TO SIMULATE ===============
-const depositAmount = 50000;
+const depositAmount = 5000;
 const tvl = 31000000;
 
 // const totalPrizes = 4096; removed to be calculated dependent on prize tier
 
-const simulationDays = 365;
+const simulationDays = 52; // 52 for weekly, 365 for daily
 const simulationRuns = 300;
 
-const maxPrizes = 2;
+const maxPrizes = 1;
 
-const gasToClaim = .75
+const gasToClaim = .15
 // const tierNumPrizes = [1, 3, 12, 48, 192, 768];
 // const tierNumPrizes = [1, 12, 48, 3072]; // newly proposed
 
 // const tierPrizes = [1000, 100, 50, 10, 5, 5];
 // const tierPrizes = [2000, 100, 10, 1]; //newly proposed
 
-let tierNumPrizes = [1, 3, 12, 48, 192, 768]; // option A
-let tierPrizes = [1000, 100, 50, 10, 5, 5]; // option A
+// let tierNumPrizes = [1, 3, 12, 48, 192, 768]; // option A
+// let tierPrizes = [1000, 100, 50, 10, 5, 5]; // option A
+
+let tierNumPrizes = [1, 3, 12, 48, 192, 768, 3072]; // Bitrange 2
+let tierPrizes = [5000, 1000, 5, 5, 5, 10,  5]; //  Bitrange 2
 
 
 // =============================================================
@@ -44,7 +47,7 @@ if (depositAmount > 49999) {
 let totalPrizeValue = 0;
 let totalPrizes = 0;
 let gasCost = 0;
-for (x = 0; x < tierNumPrizes.length; x++) {
+for (let x = 0; x < tierNumPrizes.length; x++) {
   totalPrizeValue += tierNumPrizes[x] * tierPrizes[x];
   if (tierNumPrizes[x] * tierPrizes[x] > 0) {
     totalPrizes += tierNumPrizes[x];
@@ -55,7 +58,7 @@ console.log("total number of prizes: ", totalPrizes);
 
 const dailyProbWin = 1 / (tvl / totalPrizes / scalingVariable); // daily dollar probability of winning
 let tierPrizesAfterGas = [];
-for (x in tierPrizes) {
+for (let x in tierPrizes) {
   let prizeVal = Math.max(0, tierPrizes[x] - gasToClaim);
 
   tierPrizesAfterGas.push(prizeVal);
@@ -121,11 +124,11 @@ let max = 0;
 let claimableAmount = 0;
 let droppedTotal = 0;
 let firstPrizeDayTotal = 0;
-for (x = 0; x < simulationRuns; x++) {
+for (let x = 0; x < simulationRuns; x++) {
   winnings = calculateWinnings();
   // log each simulation
   // console.log(winnings);
-  droppedNumber = winnings[3];
+  let droppedNumber = winnings[3];
   droppedTotal += droppedNumber;
   claimableAmount = winnings[0];
   claimable += claimableAmount;
@@ -137,8 +140,8 @@ for (x = 0; x < simulationRuns; x++) {
     max = claimableAmount;
   }
 }
-tierString = "";
-for (x in tierNumPrizes) {
+let tierString = "";
+for (let x in tierNumPrizes) {
   tierString += tierNumPrizes[x] + ": " + tierPrizes[x] + " ";
 }
 console.log("prize tiering: ", tierString);
@@ -152,7 +155,7 @@ console.log(
 console.log("unluckiest player claimable: ", min.toFixed());
 console.log("luckiest player claimable: ", max.toFixed());
 
-let annualized = (365 / simulationDays) * 100;
+let annualized = (52 / simulationDays) * 100;
 let averageClaimable = claimable / simulationRuns;
 let averageApr = annualized * (claimable / simulationRuns / depositAmount);
 console.log(
