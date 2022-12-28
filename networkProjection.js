@@ -1,146 +1,233 @@
 import fetch from "node-fetch"
-import 'dotenv/config'
-import chalk from 'chalk';
 
-// let tierNumPrizes = [1, 3, , 12, 48, 192, 768, 3072]; // Bitrange 2
-// let tierPrizes = [5000, 1000, 5, 5, 5, 10,  5]; //  Bitrange 2
-// let tierNumPrizes = [1, 4, 64, 128, 256, 1024]; // Bitrange 1
-// let tierPrizes = [5000, 1000, 20, 20, 10, 5]; //  Bitrange 1
-
-// let tierNumPrizes = [1, 12, 3072] // current Polygon
-// let tierPrizes = [1420, 20, 1] // current Polygon
-let tierNumPrizes = [1, 48] // current Optimism
-let tierPrizes = [1420, 69]
-
-let tvl = 31000000
 const maxPrizes = 1;
 
-let totalPrizes = 0;
-let totalPrizeValue = 0;
-for (let x = 0; x < tierNumPrizes.length; x++) {
-    totalPrizeValue += tierNumPrizes[x] * tierPrizes[x];
-    if (tierNumPrizes[x] * tierPrizes[x] > 0) {
-        totalPrizes += tierNumPrizes[x];
-    }
-}
-const dailyProbWin = 1 / (tvl / totalPrizes)
+// todo allow more flexibility to recognize bitrange
+let tierNumPrizes = [
+  1, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
+];
+const blacklistAddresses = []
+const prizeTiers = [
+    {
+        name: "Avalanche",
+        id: 43114,
+        dpr: 0.0000547945,
+        tierPrizes: [6000, 2, 2, 2, 0, 0, 2, 0, 2, 0, 2, 0, 0, 2, 0, 0],
+      },
+    {
+      name: "Optimism",
+      id: 10,
+      dpr:     0.0000273973,
+      // tierPrizes: [328083990,0,0,0,0,0,0,0,0,0,671916010,0,0,0,0,0], // current
+      tierPrizes: [6000, 2, 2, 2, 0, 0, 2, 0, 2, 0, 2, 0, 0, 2, 0, 0],
+    },
+    {
+        name: "Polygon",
+        id: 137,
+        dpr: 0.0000410959,
+        tierPrizes: [6000,0,0,.5,.5,.5,0,0,.5,0,.5,0,.5,0,0,.5],
+      },
+    {
+      name: "Ethereum",
+      id: 1,
+      dpr: 0.0000547945,
+      tierPrizes: [6000,100,100,100,100,100,0,100,0,0,0,0,0,0,0,0],
+    },
+  ];
 
-function commaInt(num) {
-    num = parseInt(num)
-    return chalk.cyanBright(num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-
-}
-function simulate(deposit) {
+  function commaInt(num) {
+    num = parseInt(num);
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+  function simulate(deposit, dailyProbWin, tierPrizes, totalPrizes) {
     let prizes = [];
+    let grandPrize = 0
     for (let draw = 0; draw < Math.trunc(deposit); draw++) {
-        for (let tier in tierNumPrizes) {
-            if (Math.random() < (tierNumPrizes[tier] / totalPrizes) * dailyProbWin) {
-                prizes.push(tierPrizes[tier]);
-            }
-        }
+      for (let i=0; i < tierNumPrizes.length;i++) {
+        if(tierPrizes[i] > 0){
+        if (Math.random() < (tierNumPrizes[i] / totalPrizes) * dailyProbWin) {
+          prizes.push(tierPrizes[i]);
+          // check if grandprize
+          if(i===0) { grandPrize+=1}
+        }}
+      }
     }
-    return prizes.sort(function (a, b) {
-        return b - a;
-    });
-}
+    return {grandPrize: grandPrize,prizes:prizes.sort(function (a, b) {
+      return b - a;
+    })}
+  }
 
-function simulatePooler(deposit) {
-    let dayResult = simulate(deposit)
-    // console.log(dayResult)
+async function runDepositors(runs){
+    let networkClaimablePrizes = 0
+    let networkClaimablePrizeValue = 0
+    let networkDroppedPrizes = 0
+    let networkDroppedPrizeValue = 0
+    let networkExpectedPrize = 0
+    let networkGrandPrizes = 0
+    let networkTvl = 0
+    let networkCount = 0
+    let networkDpr = 0
 
-    let totalPrizeAwarded = dayResult.reduce((partial_sum, a) => partial_sum + a, 0);
-
-    let droppedPrizes = dayResult.slice(maxPrizes, dayResult.length);
-    let droppedValue = droppedPrizes
-        .reduce((partial_sum, a) => partial_sum + a, 0);
-    // if(droppedValue > 0){console.log("dropped: ",droppedPrizes," value ",droppedValue)}
-
-    let claimablePrizes = dayResult.slice(0, maxPrizes)
-    let claimableValue = claimablePrizes
-        .reduce((partial_sum, a) => partial_sum + a, 0);
-    // if(claimableValue > 0){console.log("claimable: ",claimablePrizes," value ",claimableValue)}
-    let numberDropped = droppedPrizes.length;
-
-    // console.log("total prize awarded ", totalPrizeAwarded)
-    // console.log("claimable prizes ", claimablePrizes)
-    // console.log("claimable value ", claimableValue)
-    // console.log("dropped prizes ", droppedPrizes)
-    // console.log("dropped value", droppedValue)
-    // console.log("number of prizes dropped", numberDropped)
-
-    const returnData = {
-        totalPrizeAwarded: totalPrizeAwarded,
-        claimablePrizes: claimablePrizes,
-        claimableValue: claimableValue,
-        droppedPrizes: droppedPrizes,
-        droppedValue: droppedValue,
-        numberDropped: numberDropped
-    }
-    return returnData;
-}
-
-async function runDepositors(chain,runs) {
-    // split personalities, use 5 for 10m tvl to become 50m
-    let scaleResults = 1
-    let ticket = ""
-    if (chain === 137) { ticket = "0x6a304dfdb9f808741244b6bfee65ca7b3b3a6076" }
-    else if (chain === 10) { ticket = "0x62BB4fc73094c83B5e952C2180B23fA7054954c4" }
-    else if (chain === 1) { ticket = "0xdd4d117723c257cee402285d3acf218e9a8236e1" }
-    else if (chain === 43114) { ticket = "0xb27f379c050f6ed0973a01667458af6ecebc1d90" }
-    else { chain = 137; ticket = "0x6a304dfdb9f808741244b6bfee65ca7b3b3a6076" }
-
-
-    let api = await fetch(
-        "https://api.covalenthq.com/v1/" + chain + "/tokens/" + ticket + "/token_holders/?page-size=15000&key=" + process.env.COVALENT_KEY
-    );
-
+for(let chainTier of prizeTiers){
+    let api = await fetch("https://poolexplorer.xyz/players" + chainTier.id);
     let result = await api.json();
     let events = result.data.items;
-    let poolers = result.data.items.length
-    for (let x = 1; x < scaleResults; x++) {
-        events = events.concat(events)
-    }
+    let poolers = result.data.items.length;
     let totalClaimable = 0
     let totalDropped = 0
     let prizesClaimable = 0
     let prizesDropped = 0
+    let grandPrizes = 0
     let wins = []
     let drops = []
     let totalBalance = 0
 
-    for (let runner = 1; runner <= runs; runner++) {
-
-        events.forEach(pooler => {
-            let poolerResult = simulatePooler(pooler.balance / 1e6)
-            totalBalance += pooler.balance / 1e6
-            totalClaimable += poolerResult.claimableValue
-            totalDropped += poolerResult.droppedValue
-            prizesClaimable += poolerResult.claimablePrizes.length
-            prizesDropped += poolerResult.droppedPrizes.length
-            wins = wins.concat(poolerResult.claimablePrizes)
-            drops = drops.concat(poolerResult.droppedPrizes)
-        })
+    let totalPrizeValue = 0;
+    let totalPrizes = 0;
+    for (let x = 0; x < tierNumPrizes.length; x++) {
+      totalPrizeValue += tierNumPrizes[x] * chainTier.tierPrizes[x];
+      if (tierNumPrizes[x] * chainTier.tierPrizes[x] > 0) {
+        totalPrizes += tierNumPrizes[x];
+      }
     }
-    console.log()
+    let chainTvl = Math.round(
+        events.reduce((accumulator, player) => {
+          return accumulator + player.balance / 1e6;
+        }, 0)
+      );
 
-    let tierString = "";
-    for (let x in tierNumPrizes) {
-        tierString += tierNumPrizes[x] + ": " + tierPrizes[x] + " ";
+      const expectedReturns = chainTvl * chainTier.dpr
+      const oddsAdjustment = expectedReturns / totalPrizeValue
+      const dailyProbWin = oddsAdjustment * (1 / (chainTvl / totalPrizes));
+        
+      //   console.log("expected returns",expectedReturns)
+      //   console.log("odds adjustment",oddsAdjustment)
+    //   console.log("dpr: ",chainTier.dpr)
+    //   console.log("total prizes: ",totalPrizes)
+    //   console.log("total prize value: ",totalPrizeValue)
+    //   console.log("daily prob win: ",dailyProbWin)
+      for (let runner = 1; runner <= runs; runner++) {
+        events.forEach((pooler) => {
+          if (!blacklistAddresses.includes(pooler.address)) {
+            let dayResult = simulate(pooler.balance/1e6, dailyProbWin, chainTier.tierPrizes, totalPrizes);
+            let winTheBigOne = dayResult.grandPrize
+            dayResult = dayResult.prizes
+                let totalPrizeAwarded = dayResult.reduce(
+                    (partial_sum, a) => partial_sum + a,
+                    0
+                );
+
+                let droppedPrizes = dayResult.slice(maxPrizes, dayResult.length);
+                let droppedValue = droppedPrizes.reduce(
+                    (partial_sum, a) => partial_sum + a,
+                    0
+                );
+                let claimablePrizes = dayResult.slice(0, maxPrizes);
+                let claimableValue = claimablePrizes.reduce(
+                    (partial_sum, a) => partial_sum + a,
+                    0
+                );
+                // if(claimablePrizes.length > 0) {console.log("winner ",claimablePrizes)}
+
+            totalBalance += pooler.balance / 1e6;
+            totalClaimable += claimableValue;
+            totalDropped += droppedValue;
+            prizesClaimable += claimablePrizes.length;
+            grandPrizes += winTheBigOne
+            prizesDropped += droppedPrizes.length;
+            wins = wins.concat(claimablePrizes);
+            drops = drops.concat(droppedPrizes);
+          }
+        });
     }
-    console.log("Prize tier: ", chalk.cyanBright(tierString));
-    console.log()
+    networkDpr += chainTier.dpr
+    networkCount += 1;
+    networkTvl += chainTvl
+    networkClaimablePrizeValue += totalClaimable
+    networkClaimablePrizes += prizesClaimable
+    networkDroppedPrizes += prizesDropped
+    networkDroppedPrizeValue += totalDropped
+    networkExpectedPrize += expectedReturns
+    networkGrandPrizes += grandPrizes
+    console.log("====== ",chainTier.name," ========")
+  console.log(
+    " Chain TVL: ",
+    commaInt(chainTvl),
+    " Poolers: ",
+    commaInt(poolers)
+  );
+  console.log(
+    "Expected daily: ",
+    expectedReturns.toFixed(0)," Expected Prize APY: ",((expectedReturns*365 / chainTvl)*100).toFixed(2))
+  console.log(
+    "Number of claimable prizes: ",
+    commaInt(wins.length / runs),
+    " value: ",
+    commaInt(totalClaimable / runs),
+    grandPrizes > 0 ? "grand prizes: " + grandPrizes : ""
+  );
+  console.log(
+    "Number of dropped prizes: ",
+    commaInt(drops.length / runs),
+    " value: ",
+    commaInt(totalDropped / runs),
+    " percentage: ",
+    commaInt(
+      100 *
+        (totalDropped / runs / (totalDropped / runs + totalClaimable / runs))
+    ),
+    "%"
+  );
+  // console.log("Wins: ", wins.sort(function(a, b) {
+  //     return b - a;
+  //   }))
+  // console.log("Drops: ", drops.sort(function(a, b) {
+  //     return b - a;
+  //   }))
+  console.log();
 
-    console.log("TVL: ", commaInt(tvl), " Chain TVL: ", commaInt(totalBalance / runs)," Poolers: ",commaInt(poolers))
-    console.log("Total prize value: ", commaInt(totalPrizeValue))
-    console.log("Number of claimable prizes: ", commaInt(wins.length / runs), " value: ", commaInt(totalClaimable / runs))
-    console.log("Number of dropped prizes: ", commaInt(drops.length / runs), " value: ", commaInt(totalDropped / runs)," percentage: ",commaInt(100 * (totalDropped/runs / ((totalDropped/runs) + (totalClaimable/runs)))),"%")
-    console.log()
-    // console.log("Wins: ", wins.sort(function(a, b) {
-    //     return b - a;
-    //   }))
-    // console.log("Drops: ", drops.sort(function(a, b) {
-    //     return b - a;
-    //   }))
-    console.log("Simulated ", commaInt(runs), " times.")
 }
-runDepositors(10,9) // chain id , simulate x times
+
+console.log("====== NETWORK RESULTS ========")
+console.log("Simulated ", commaInt(runs), " times."," Network TVL: ",commaInt(networkTvl), 
+
+// need work
+// " Expected grand prizes: ",
+// ((networkTvl * networkDpr * 4 / networkExpectedPrize)*runs).toFixed(2),
+
+
+ " Grand prizes: " + networkGrandPrizes );
+// console.log(
+//   " Chain TVL: ",
+//   commaInt(chainTvl),
+//   " Poolers: ",
+//   commaInt(poolers)
+// );
+console.log(
+  "Expected daily: ",
+  networkExpectedPrize.toFixed(0),
+  "Delivered Daily: ",
+  commaInt((networkClaimablePrizeValue + networkDroppedPrizeValue) / runs)
+  
+  )
+console.log(
+  "Number of claimable prizes: ",
+  commaInt(networkClaimablePrizes / runs),
+  " value: "
+);
+console.log(
+  "Number of dropped prizes: ",
+  commaInt(networkDroppedPrizes / runs),
+  " value: ",
+  commaInt(networkDroppedPrizeValue / runs),
+  " percentage: ",
+  commaInt(
+    100 *
+      (networkDroppedPrizeValue / runs / (networkDroppedPrizeValue / runs + networkClaimablePrizeValue / runs))
+  ),
+  "%"
+);
+}
+
+// runDepositors(number of times to simulate)
+runDepositors(45)
