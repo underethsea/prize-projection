@@ -2,11 +2,21 @@ import fetch from "node-fetch"
 
 const maxPrizes = 1;
 
-// todo allow more flexibility to recognize bitrange
-let tierNumPrizes = [
-  1, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
-];
-const blacklistAddresses = []
+let tierNumPrizes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const bitRange = 1;
+
+tierNumPrizes = tierNumPrizes.map((eachNum, index) => {
+  return 2 ** (bitRange * index) - 2 ** (bitRange * (index - 1));
+});
+
+// use lowercase addresses to match api
+const blacklistAddresses = [
+    "0xb9a179dca5a7bf5f8b9e088437b3a85ebb495efe", // prize distro mainnet
+    "0x8141bcfbcee654c5de17c4e2b2af26b67f9b9056", // prize distro poly
+    "0x83332f908f403ce795d90f677ce3f382fe73f3d1", // prize distro avax
+    "0x722e9bfc008358ac2d445a8d892cf7b62b550f3f", // prize distro op
+    "0x42cd8312d2bce04277dd5161832460e95b24262e", // treasury
+]
 const prizeTiers = [
     {
         name: "Avalanche",
@@ -90,15 +100,18 @@ for(let chainTier of prizeTiers){
         totalPrizes += tierNumPrizes[x];
       }
     }
+
     let chainTvl = Math.round(
-        events.reduce((accumulator, player) => {
-          return accumulator + player.balance / 1e6;
+        events.filter(player => !blacklistAddresses.includes(player.address))
+        .reduce((accumulator, player) => {
+          return accumulator + player.balance / 1e6 
         }, 0)
       );
-
+      
       const expectedReturns = chainTvl * chainTier.dpr
       const oddsAdjustment = expectedReturns / totalPrizeValue
       const dailyProbWin = oddsAdjustment * (1 / (chainTvl / totalPrizes));
+      const daysToTierOnePrize = 1 / oddsAdjustment
         
       //   console.log("expected returns",expectedReturns)
       //   console.log("odds adjustment",oddsAdjustment)
@@ -151,14 +164,17 @@ for(let chainTier of prizeTiers){
     networkGrandPrizes += grandPrizes
     console.log("====== ",chainTier.name," ========")
   console.log(
-    " Chain TVL: ",
+    "Chain TVL: ",
     commaInt(chainTvl),
     " Poolers: ",
     commaInt(poolers)
   );
   console.log(
     "Expected daily: ",
-    expectedReturns.toFixed(0)," Expected Prize APY: ",((expectedReturns*365 / chainTvl)*100).toFixed(2))
+    expectedReturns.toFixed(0)," Expected Prize APY: ",((expectedReturns*365 / chainTvl)*100).toFixed(2)+"%",
+    " Days to T1 prize: ",
+    daysToTierOnePrize.toFixed(2)
+    )
   console.log(
     "Number of claimable prizes: ",
     commaInt(wins.length / runs),
@@ -213,7 +229,8 @@ console.log(
 console.log(
   "Number of claimable prizes: ",
   commaInt(networkClaimablePrizes / runs),
-  " value: "
+  " value: ",
+  commaInt(networkClaimablePrizeValue / runs)
 );
 console.log(
   "Number of dropped prizes: ",
@@ -230,4 +247,4 @@ console.log(
 }
 
 // runDepositors(number of times to simulate)
-runDepositors(45)
+runDepositors(3)
