@@ -6,9 +6,10 @@ let tierNumPrizes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const bitRange = 1;
 
 tierNumPrizes = tierNumPrizes.map((eachNum, index) => {
-  return 2 ** (bitRange * index) - 2 ** (bitRange * (index - 1));
+  return Math.round(2 ** (bitRange * index) - 2 ** (bitRange * (index - 1)));
 });
 
+console.log(tierNumPrizes)
 // use lowercase addresses to match api
 const blacklistAddresses = [
     "0xb9a179dca5a7bf5f8b9e088437b3a85ebb495efe", // prize distro mainnet
@@ -18,32 +19,32 @@ const blacklistAddresses = [
     "0x42cd8312d2bce04277dd5161832460e95b24262e", // treasury
 ]
 const prizeTiers = [
-    {
-        name: "Avalanche",
-        id: 43114,
-        dpr: 0.0000547945,
-        tierPrizes: [6000, 2, 2, 2, 0, 0, 2, 0, 2, 0, 2, 0, 0, 2, 0, 0],
-      },
-    {
-      name: "Optimism",
-      id: 10,
-      dpr:     0.0000273973,
-      // tierPrizes: [328083990,0,0,0,0,0,0,0,0,0,671916010,0,0,0,0,0], // current
-      tierPrizes: [6000, 2, 2, 2, 0, 0, 2, 0, 2, 0, 2, 0, 0, 2, 0, 0],
+  {
+      name: "Avalanche",
+      id: 43114,
+      dpr: 0.00006776818,
+      tierPrizes: [5000,20,50,0,0,100,50,50,20,0,10,0,0,0,0,0,],
     },
-    {
-        name: "Polygon",
-        id: 137,
-        dpr: 0.0000410959,
-        tierPrizes: [6000,0,0,.5,.5,.5,0,0,.5,0,.5,0,.5,0,0,.5],
-      },
-    {
-      name: "Ethereum",
-      id: 1,
-      dpr: 0.0000547945,
-      tierPrizes: [6000,100,100,100,100,100,0,100,0,0,0,0,0,0,0,0],
+  {
+    name: "Optimism",
+    id: 10,
+    dpr:  0.00001387380,
+    tierPrizes: [5000,20,50,0,0,100,50,50,20,0,10,0,0,0,0,0,],
+  },
+  {
+      name: "Polygon",
+      id: 137,
+      dpr: 0.00003841975,
+      tierPrizes: [5000,0,0,50,10,100,1,0,0,0,0,0,0,1,1,0,],
     },
-  ];
+  {
+    name: "Ethereum",
+    id: 1,
+    dpr: 0.00005923045,
+    tierPrizes: [5000,0,500,100,0,0,0,0,100,0,0,0,0,0,0,0,],
+  },
+];
+
 
   function commaInt(num) {
     num = parseInt(num);
@@ -173,8 +174,9 @@ for(let chainTier of prizeTiers){
     "Expected daily: ",
     expectedReturns.toFixed(0)," Expected Prize APY: ",((expectedReturns*365 / chainTvl)*100).toFixed(2)+"%",
     " Days to T1 prize: ",
-    daysToTierOnePrize.toFixed(2)
-    )
+    daysToTierOnePrize.toFixed(2)," 1k ODDS 1 in ",
+    (1 / (1 - Math.pow((chainTvl - 1000) / chainTvl, (chainTvl * chainTier.dpr /  totalPrizeValue * totalPrizes)))).toFixed(2))
+
   console.log(
     "Number of claimable prizes: ",
     commaInt(wins.length / runs),
@@ -247,4 +249,5 @@ console.log(
 }
 
 // runDepositors(number of times to simulate)
-runDepositors(3)
+runDepositors(100)
+
